@@ -100,16 +100,27 @@ def manage_uploaded_documents(uploaded_files):
 
 
 # --- Dynamic Query Engine Creation ---
-def create_query_engine_from_selected_docs(selected_docs):
-    """Creates a combined query engine from selected documents."""
+def create_query_engine_from_selected_docs(selected_docs, reranker):
+    """Creates a combined query engine from selected documents, with a recursive query engine."""
     if selected_docs:
         selected_indices = [
             st.session_state["doc_indices"][doc_name] for doc_name in selected_docs
         ]
         # Combine nodes from selected indices
-        combined_nodes = sum((nodes for _, nodes in selected_indices), [])  # Accessing nodes from tuple
+        combined_nodes = sum((nodes for _, nodes in selected_indices), [])
+        
+        # Create the combined index
         combined_index = VectorStoreIndex(combined_nodes)
-        return combined_index.as_query_engine(similarity_top_k=5)
+        
+        # Apply the recursive query engine with reranker
+        recursive_query_engine = combined_index.as_query_engine(
+            similarity_top_k=5,
+            node_postprocessors=[reranker],  # Apply reranker here
+            verbose=True,
+        )
+        
+        return recursive_query_engine  # Return the query engine with reranker applied
+    
     return None
 
 
@@ -135,7 +146,12 @@ if "doc_indices" in st.session_state:
         options=list(st.session_state["doc_indices"].keys()),
     )
     if st.button("Create Query Engine"):
-        st.session_state["current_query_engine"] = create_query_engine_from_selected_docs(selected_docs)
+        # Initialize the reranker
+        reranker = FlagEmbeddingReranker(
+            top_n=5,
+            model="BAAI/bge-reranker-large",
+        )
+        st.session_state["current_query_engine"] = create_query_engine_from_selected_docs(selected_docs, reranker)
         st.success("Query engine created for selected documents!")
 
 # Step 3: Query Interface
