@@ -27,6 +27,16 @@ def load_cache(file_name):
             return pickle.load(f)
     return None
 
+# --- Embedding Model Selection ---
+def get_embedding_model(model_name="text-embedding-ada-002"):
+    """
+    Returns the embedding model based on the name provided.
+    """
+    if model_name.startswith("text-embedding"):
+        return OpenAIEmbedding(model=model_name)
+    else:
+        raise ValueError(f"Unsupported model: {model_name}")
+
 # --- Initialization and API Key Setup ---
 def initialize_keys():
     """Automatically sets API keys from environment variables."""
@@ -52,9 +62,11 @@ def get_page_nodes(docs, separator="\n---\n"):
             nodes.append(node)
     return nodes
 
-def parse_and_index_single_document(file_path, verbosity=False):
-    """Parses and indexes a single document."""
-    file_name = os.path.basename(file_path)
+def parse_and_index_single_document(file_path, embedding_model, verbosity=False):
+    """
+    Parses and indexes a single document with a specific embedding model.
+    """
+    file_name = f"{os.path.basename(file_path)}_{embedding_model.model_name.replace('/', '_')}"
     cached_data = load_cache(file_name)
     if cached_data:
         if verbosity:
@@ -76,22 +88,24 @@ def parse_and_index_single_document(file_path, verbosity=False):
     combined_nodes = base_nodes + objects + get_page_nodes(doc)
 
     # Create the index
-    index = VectorStoreIndex(nodes=combined_nodes)
+    index = VectorStoreIndex(nodes=combined_nodes, embedding_model=embedding_model)
     
     # Save the index and nodes to cache
     save_cache(file_name, (index, combined_nodes))
 
     return index, combined_nodes  # Return both index and nodes
 
-def create_query_engine(selected_files, reranker, verbosity=False):
-    """Creates a combined query engine from selected documents."""
+def create_query_engine(selected_files, embedding_model, reranker, verbosity=False):
+    """
+    Creates a combined query engine from selected documents and embedding model.
+    """
     combined_nodes = []
     for file_path in selected_files:
-        _, nodes = parse_and_index_single_document(file_path, verbosity)
+        _, nodes = parse_and_index_single_document(file_path, embedding_model, verbosity)
         combined_nodes.extend(nodes)
 
     # Create the combined index
-    combined_index = VectorStoreIndex(combined_nodes)
+    combined_index = VectorStoreIndex(combined_nodes, embedding_model=embedding_model)
     
     # Apply the recursive query engine with reranker
     return combined_index.as_query_engine(
@@ -107,6 +121,10 @@ def main(verbosity=False):
         "./TSLA-10Q-Sep2024.pdf",
     ]
 
+    # Embedding model to use (change here for a different model)
+    embedding_model_name = "text-embedding-ada-002"  # Replace with another OpenAI-compatible model if needed
+    embedding_model = get_embedding_model(embedding_model_name)
+
     # Check if documents are available
     if not document_paths:
         sys.exit("No document paths provided. Please add paths to your documents.")
@@ -114,9 +132,6 @@ def main(verbosity=False):
     # Parse and index documents
     if verbosity:
         print("Processing documents...")
-    doc_indices = {path: parse_and_index_single_document(path, verbosity) for path in document_paths}
-    if verbosity:
-        print("Documents processed and indexed!")
 
     # Select all documents for the query
     if verbosity:
@@ -125,7 +140,7 @@ def main(verbosity=False):
         top_n=5,
         model="BAAI/bge-reranker-large",
     )
-    query_engine = create_query_engine(document_paths, reranker, verbosity)
+    query_engine = create_query_engine(document_paths, embedding_model, reranker, verbosity)
     if verbosity:
         print("Query engine created!")
 
@@ -139,5 +154,5 @@ def main(verbosity=False):
 
 
 if __name__ == "__main__":
-    verbosity = False  # Set to True for verbose output, False for only the answer
+    verbosity = True  # Set to True for verbose output, False for only the answer
     main(verbosity)
