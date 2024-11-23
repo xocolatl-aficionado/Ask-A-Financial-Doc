@@ -10,6 +10,7 @@ from copy import deepcopy
 from dotenv import load_dotenv
 import pickle
 import os
+import time
 
 # --- Utility Functions ---
 def save_cache(file_name, data):
@@ -95,7 +96,7 @@ def parse_and_index_single_document(file_path, embedding_model, verbosity=False)
 
     return index, combined_nodes  # Return both index and nodes
 
-def create_query_engine(selected_files, embedding_model, reranker, verbosity=False):
+def create_query_engine(selected_files, embedding_model, reranker=None, verbosity=False):
     """
     Creates a combined query engine from selected documents and embedding model.
     """
@@ -106,7 +107,12 @@ def create_query_engine(selected_files, embedding_model, reranker, verbosity=Fal
 
     # Create the combined index
     combined_index = VectorStoreIndex(combined_nodes, embedding_model=embedding_model)
-    
+    if not reranker:
+        return combined_index.as_query_engine(
+        similarity_top_k=5,
+        verbose=verbosity,
+        )
+
     # Apply the recursive query engine with reranker
     return combined_index.as_query_engine(
         similarity_top_k=5,
@@ -140,7 +146,7 @@ def main(verbosity=False):
         top_n=5,
         model="BAAI/bge-reranker-large",
     )
-    query_engine = create_query_engine(document_paths, embedding_model, reranker, verbosity)
+    query_engine = create_query_engine(document_paths, embedding_model, None, verbosity)
     if verbosity:
         print("Query engine created!")
 
@@ -148,16 +154,21 @@ def main(verbosity=False):
     query = "How much revenue did we get in 2023 in the form of automotive regulatory credits?"  
     if verbosity:
         print(f"Running query: {query}")
+    now = time.time()
     response = query_engine.query(query)
+    print(f"Elapsed: {round(time.time() - now, 2)}s")
     
     print(f"Query: {query}:\n{response}")
 
-    for i in range(5):
-        print(f"<<<<<<<<<<<<<<<<<<<<<<<<<<<<CHUNK {i}>>>>>>>>>>>>>>>>>>>>>>>>")
-        print(f"DEBUGGING: {response.source_nodes[i].get_content()}")
+    if verbosity:
+        for i in range(5):
+            print(f"<<<<<<<<<<<<<<<<<<<<<<<<<<<<CHUNK {i}>>>>>>>>>>>>>>>>>>>>>>>>")
+            print(f"DEBUGGING: {response.source_nodes[i].get_content()}")
 
 
 
 if __name__ == "__main__":
-    verbosity = True  # Set to True for verbose output, False for only the answer
+    
+    verbosity = False  # Set to True for verbose output, False for only the answer
     main(verbosity)
+    
