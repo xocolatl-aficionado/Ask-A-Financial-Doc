@@ -152,6 +152,11 @@ def main(verbosity=False):
     
     print(f"Query: {query}:\n{response}")
 
+    for i in range(5):
+        print(f"<<<<<<<<<<<<<<<<<<<<<<<<<<<<CHUNK {i}>>>>>>>>>>>>>>>>>>>>>>>>")
+        print(f"DEBUGGING: {response.source_nodes[i].get_content()}")
+
+
 
 if __name__ == "__main__":
     verbosity = True  # Set to True for verbose output, False for only the answer
