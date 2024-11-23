@@ -1,5 +1,6 @@
 import sys
 from llama_index.core import VectorStoreIndex
+from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.openai import OpenAI
 from llama_parse import LlamaParse
@@ -11,7 +12,48 @@ from dotenv import load_dotenv
 import pickle
 import os
 import time
+import json
 
+# --- Load Configuration ---
+def load_config(config_file="config.json"):
+    """
+    Load configuration settings from a JSON file.
+    """
+    with open(config_file, "r") as f:
+        config = json.load(f)
+    return config
+
+# --- Initialize LLM ---
+def initialize_llm(config):
+    """
+    Initialize the LLM based on the provided configuration.
+    """
+    llm_config = config.get("llm", {})
+    llm_type = llm_config.get("type", "").lower()
+    
+    if llm_type == "openai":
+        model_name = llm_config.get("model", "gpt-3.5-turbo")
+        return OpenAI(model=model_name)
+    else:
+        raise ValueError(f"Unsupported LLM type: {llm_type}")
+
+# --- Initialize Embedding Model ---
+def initialize_embedding_model(config):
+    """
+    Initialize the embedding model based on the provided configuration.
+    """
+    embedding_config = config.get("embedding_model", {})
+    model_type = embedding_config.get("type", "").lower()
+
+    if model_type == "openai":
+        model_name = embedding_config.get("model_name", "text-embedding-ada-002")
+        return OpenAIEmbedding(model=model_name)
+    elif model_type == "huggingface":
+        model_name = embedding_config.get("model_name", "BAAI/bge-small-en-v1.5")
+        return HuggingFaceEmbedding(model_name=model_name)
+    else:
+        raise ValueError(f"Unsupported embedding model type: {model_type}")
+    
 # --- Utility Functions ---
 def save_cache(file_name, data):
     """Saves the cache to a pickle file."""
@@ -35,6 +77,8 @@ def get_embedding_model(model_name="text-embedding-ada-002"):
     """
     if model_name.startswith("text-embedding"):
         return OpenAIEmbedding(model=model_name)
+    elif model_name == "BAAI/bge-small-en-v1.5":
+        return HuggingFaceEmbedding(model_name=model_name)
     else:
         raise ValueError(f"Unsupported model: {model_name}")
 
@@ -63,7 +107,7 @@ def get_page_nodes(docs, separator="\n---\n"):
             nodes.append(node)
     return nodes
 
-def parse_and_index_single_document(file_path, embedding_model, verbosity=False):
+def parse_and_index_single_document(file_path, model, embedding_model, verbosity=False):
     """
     Parses and indexes a single document with a specific embedding model.
     """
@@ -80,7 +124,7 @@ def parse_and_index_single_document(file_path, embedding_model, verbosity=False)
 
     # Parse document into nodes
     node_parser = MarkdownElementNodeParser(
-        llm=OpenAI(model="gpt-4o-mini"), num_workers=4
+        llm=model, num_workers=4
     )
     nodes = node_parser.get_nodes_from_documents(doc)
     base_nodes, objects = node_parser.get_nodes_and_objects(nodes)
@@ -96,13 +140,13 @@ def parse_and_index_single_document(file_path, embedding_model, verbosity=False)
 
     return index, combined_nodes  # Return both index and nodes
 
-def create_query_engine(selected_files, embedding_model, reranker=None, verbosity=False):
+def create_query_engine(selected_files, model, embedding_model, reranker=None, verbosity=False):
     """
     Creates a combined query engine from selected documents and embedding model.
     """
     combined_nodes = []
     for file_path in selected_files:
-        _, nodes = parse_and_index_single_document(file_path, embedding_model, verbosity)
+        _, nodes = parse_and_index_single_document(file_path, model, embedding_model, verbosity)
         combined_nodes.extend(nodes)
 
     # Create the combined index
@@ -126,10 +170,16 @@ def main(verbosity=False):
     document_paths = [
         "./TSLA-10Q-Sep2024.pdf",
     ]
+    # Load configuration
+    config = load_config("config.json")
+    
+    # Initialize LLM and Embedding Models
+    llm_choice = initialize_llm(config)
+    embedding_model = initialize_embedding_model(config)
 
-    # Embedding model to use (change here for a different model)
-    embedding_model_name = "text-embedding-ada-002"  # Replace with another OpenAI-compatible model if needed
-    embedding_model = get_embedding_model(embedding_model_name)
+    # You can now use `llm` and `embedding_model` in your pipeline
+    print(f"LLM: {llm_choice.model}")
+    print(f"Embedding Model: {embedding_model.model_name}")
 
     # Check if documents are available
     if not document_paths:
@@ -146,7 +196,7 @@ def main(verbosity=False):
         top_n=5,
         model="BAAI/bge-reranker-large",
     )
-    query_engine = create_query_engine(document_paths, embedding_model, None, verbosity)
+    query_engine = create_query_engine(document_paths, llm_choice, embedding_model, None, verbosity)
     if verbosity:
         print("Query engine created!")
 
