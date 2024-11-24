@@ -211,7 +211,7 @@ if document_choice:
         response = query_engines[document_name].query(query)
 
         # Display the response and elapsed time
-        st.write(f"Query: {query}:\n{response}")
+        st.write(f"Query: {query}:\n\n\n{response}")
         st.write(f"Elapsed: {round(time.time() - now, 2)}s")
     else:
         st.write("Please enter a query to proceed.")
