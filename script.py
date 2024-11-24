@@ -127,15 +127,17 @@ def parse_and_index_single_document(file_path, model, embedding_model, verbosity
     save_cache(file_name, (index, combined_nodes))
 
     return index, combined_nodes  # Return both index and nodes
-
-def create_query_engine(selected_files, model, embedding_model, reranker=None, verbosity=False):
-    """
-    Creates a combined query engine from selected documents and embedding model.
-    """
+def parse_document(selected_files, model, embedding_model):
     combined_nodes = []
     for file_path in selected_files:
         _, nodes = parse_and_index_single_document(file_path, model, embedding_model, verbosity)
         combined_nodes.extend(nodes)
+    return combined_nodes
+
+def create_query_engine(combined_nodes, embedding_model, reranker=None, verbosity=False):
+    """
+    Creates a combined query engine from selected documents and embedding model.
+    """
 
     # Create the combined index
     combined_index = VectorStoreIndex(combined_nodes, embedding_model=embedding_model)
@@ -176,15 +178,9 @@ def main(verbosity=False):
     # Parse and index documents
     if verbosity:
         print("Processing documents...")
-
-    # Select all documents for the query
-    if verbosity:
-        print("Selecting all documents for the query engine...")
-    reranker = FlagEmbeddingReranker(
-        top_n=5,
-        model="BAAI/bge-reranker-large",
-    )
-    query_engine = create_query_engine(document_paths, llm_choice, embedding_model, None, verbosity)
+    all_nodes = parse_document(document_paths, llm_choice, embedding_model)
+    
+    query_engine = create_query_engine(all_nodes, embedding_model, None, verbosity)
     if verbosity:
         print("Query engine created!")
 
