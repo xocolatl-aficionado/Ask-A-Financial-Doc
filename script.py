@@ -32,7 +32,7 @@ def initialize_llm(config):
     llm_type = llm_config.get("type", "").lower()
     
     if llm_type == "openai":
-        model_name = llm_config.get("model", "gpt-3.5-turbo")
+        model_name = llm_config.get("model", "")
         return OpenAI(model=model_name)
     else:
         raise ValueError(f"Unsupported LLM type: {llm_type}")
@@ -69,18 +69,6 @@ def load_cache(file_name):
         with open(cache_file_path, "rb") as f:
             return pickle.load(f)
     return None
-
-# --- Embedding Model Selection ---
-def get_embedding_model(model_name="text-embedding-ada-002"):
-    """
-    Returns the embedding model based on the name provided.
-    """
-    if model_name.startswith("text-embedding"):
-        return OpenAIEmbedding(model=model_name)
-    elif model_name == "BAAI/bge-small-en-v1.5":
-        return HuggingFaceEmbedding(model_name=model_name)
-    else:
-        raise ValueError(f"Unsupported model: {model_name}")
 
 # --- Initialization and API Key Setup ---
 def initialize_keys():
@@ -201,7 +189,7 @@ def main(verbosity=False):
         print("Query engine created!")
 
     # Example query
-    query = "How much revenue did we get in 2023 in the form of automotive regulatory credits?"  
+    query = "How much more was the revenue from automotive sales in the quarter ending in September 2024 compared to the quarter ending September 2023?"  
     if verbosity:
         print(f"Running query: {query}")
     now = time.time()
