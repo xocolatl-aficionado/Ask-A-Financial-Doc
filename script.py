@@ -19,10 +19,6 @@ from llama_index.llms.huggingface import HuggingFaceLLM
 from llama_index.llms.replicate import Replicate
 from llama_index.llms.gemini import Gemini
 from llama_index.embeddings.gemini import GeminiEmbedding
-import warnings
-
-
-
 
 def initialize_keys():
     """Automatically sets API keys from environment variables."""
