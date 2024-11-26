@@ -1,14 +1,21 @@
-### Evaluation 
+### Evaluation script 
 
-We use a script to run evaluation in batches. 
+We use a script ```evaluate.py``` to run evaluation in batches. No other code needs to be modified when running tests with one exception : the ```config.json```. Please set the names of the LLM and the embedding correctly within this json. Please note that each combination of LLM&Embedding would mean a _different_ document chunking, which means a _different_ pkl file from the cache will be used. If you choose an embedding that is not already cached, then a pkl will be added to your local system folder while running the script. If this happens, please commit this pkl file to a PR targetting the main branch so that others can skip the chunking time and related costs. 
 
-The script ```script.py``` will always take: 
-- Input:  a human written ```query``` and
+```evaluate.py``` is run by ```python evaluate.py```. 
+
+Behind the scenes this relies on ```script.py``` which will take/make: 
+- Input:  a human-written ```query``` and ```document_path```
 - Output: a tuple (```response```, ```retrieval_context```).
-  
+
+P.S. If you want to run a **single** test, instead of a bulk test, feel free to use ```script.py``` individually to do so. To know how to do this, run 
+```python script.py --help```
+
+### How to evaluate generations 
+
 We have two things to judge when this application is run - retreival and generation. 
 
-To evaluate each of these we need the original query and the response from our application. In addition, for some metrics, we will also require an "expected output". 
+To evaluate, we need the original query and the response from our application. In addition, for some metrics, we will also require an "expected output". 
 
 Judgement of generations, as detailed in DeepEval's [docs](https://docs.confident-ai.com/docs/guides-rag-evaluation), comes in 2 flavors: 
 - ```AnswerRelevancyMetric```: Checks if the LLM follows the prompt to give answers that are relevant and helpful based on the retrieved information.
