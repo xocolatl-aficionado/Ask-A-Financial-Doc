@@ -1,3 +1,10 @@
+### Setup
+
+- Clone the repo. 
+- Install the necessary dependencies ```pip install -r requirements.txt```
+- Create a .env file and add OPENAI_API_KEY, LLAMA_CLOUD_API_KEY, GOOGLE_API_KEY
+- Take a look at ```config.json``` and ensure those are the llm and embeddings you want to work with. 
+
 ### Evaluation script 
 
 We use a script ```evaluate.py``` to run evaluation in batches. No other code needs to be modified when running tests with one exception : the ```config.json```. Please set the names of the LLM and the embedding correctly within this json. Please note that each combination of LLM&Embedding would mean a _different_ document chunking, which means a _different_ pkl file from the cache will be used. If you choose an embedding that is not already cached, then a pkl will be added to your local system folder while running the script. If this happens, please commit this pkl file to a PR targetting the main branch so that others can skip the chunking time and related costs. 
