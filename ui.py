@@ -13,6 +13,7 @@ from copy import deepcopy
 from dotenv import load_dotenv
 import pickle
 import json
+import argparse
 import time as time
 import nest_asyncio
 from llama_index.llms.huggingface import HuggingFaceLLM
@@ -20,9 +21,6 @@ from llama_index.llms.replicate import Replicate
 from llama_index.llms.gemini import Gemini
 from llama_index.embeddings.gemini import GeminiEmbedding
 
-# Initialize the app with Streamlit
-st.title("LLM Document Processor")
-st.write("Select a document path and query its contents.")
 def initialize_keys():
     """Automatically sets API keys from environment variables."""
     load_dotenv()
@@ -67,37 +65,37 @@ def initialize_llm(config):
     llm_type = llm_config.get("type", "").lower()
     
     if llm_type == "openai":
-        model_name = llm_config.get("model", "")
-        return OpenAI(model=model_name)
+        model = llm_config.get("model", "")
+        return OpenAI(model=model)
     elif llm_type == "huggingface":
-        model_name = llm_config.get("model", "")
-        tokenizer_name = llm_config.get("tokenizer", model_name)  # Default to model name if no tokenizer is specified
-        return HuggingFaceLLM(model_name=model_name, tokenizer_name=tokenizer_name)
+        model = llm_config.get("model", "")
+        tokenizer_name = llm_config.get("tokenizer", model)  # Default to model name if no tokenizer is specified
+        return HuggingFaceLLM(model_name=model, tokenizer_name=tokenizer_name)
     elif llm_type == "replicate":
-        model_name = llm_config.get("model", "")
-        return Replicate(model=model_name)
+        model = llm_config.get("model", "")
+        return Replicate(model=model)
     elif llm_type == "gemini":
-        model_name = llm_config.get("model", "")  # Default model if not specified
-        return Gemini(model=model_name)
+        model = llm_config.get("model", "")  # Default model if not specified
+        return Gemini(model=model)
     else:
         raise ValueError(f"Unsupported LLM type: {llm_type}")
 
 def initialize_embedding_model(config):
     """Initialize the embedding model based on the provided configuration."""
     embedding_config = config.get("embedding_model", {})
-    model_type = embedding_config.get("type", "").lower()
+    llm_provider = embedding_config.get("type", "").lower()
 
-    if model_type == "openai":
-        model_name = embedding_config.get("model_name", "text-embedding-ada-002")
-        return OpenAIEmbedding(model=model_name)
-    elif model_type == "huggingface":
-        model_name = embedding_config.get("model_name", "BAAI/bge-small-en-v1.5")
-        return HuggingFaceEmbedding(model_name=model_name)
-    elif model_type == "gemini":
-        model_name = embedding_config.get("model_name", "models/text-embedding-004")
-        return GeminiEmbedding(model_name=model_name)
+    if llm_provider == "openai":
+        model = embedding_config.get("model", "text-embedding-ada-002")
+        return OpenAIEmbedding(model=model)
+    elif llm_provider == "huggingface":
+        model = embedding_config.get("model", "BAAI/bge-small-en-v1.5")
+        return HuggingFaceEmbedding(model_name=model)
+    elif llm_provider == "gemini":
+        model = embedding_config.get("model", "models/text-embedding-004")
+        return GeminiEmbedding(model_name=model)
     else:
-        raise ValueError(f"Unsupported embedding model type: {model_type}")
+        raise ValueError(f"Unsupported embedding model type: {llm_provider}")
 
 def get_page_nodes(docs, separator="\n---\n"):
     """Split each document into page nodes, by separator."""
@@ -146,7 +144,7 @@ def parse_and_index_single_document(file_path, model, embedding_model, verbosity
 
     return index, combined_nodes  # Return both index and nodes
 
-def create_query_engine(combined_nodes, embedding_model, reranker=None, verbosity=False):
+def create_query_engine(combined_nodes, embedding_model, retreival_depth =5, reranker=None, verbosity=True):
     """
     Creates a combined query engine from selected documents and embedding model.
     """
@@ -156,65 +154,67 @@ def create_query_engine(combined_nodes, embedding_model, reranker=None, verbosit
     if not reranker:
         return combined_index.as_query_engine(
             #response_mode="tree_summarize",
-            streaming=True,
-            similarity_top_k=5,
+            similarity_top_k = retreival_depth,
             verbose=verbosity,
         )
 
     # Apply the recursive query engine with reranker
     return combined_index.as_query_engine(
-        similarity_top_k=5,
+        similarity_top_k = retreival_depth,
         node_postprocessors=[reranker],
         verbose=verbosity,
     )
 
-# --- Streamlit Interactivity ---
-nest_asyncio.apply()
+st.title("Query Pipeline Interface")
+    
+# Inputs
+document_choice = st.text_input("Document Path", help="Enter the path to the document.")
+query = st.text_area("Query", help="Enter your query here.")
+retrieval_depth = st.number_input("Retrieval Depth", min_value=1, max_value=100, value=3, help="Set the depth for document retrieval.")
+verbose = st.checkbox("Verbose Mode", value=True, help="Enable verbose mode for detailed output.")
 
-# Load configuration and initialize models
-config = load_config("config.json")
-initialize_keys()
-llm_choice = initialize_llm(config)
-embedding_model = initialize_embedding_model(config)
+if st.button("Run Query"):
+    if not document_choice:
+        sys.exit("Please provide a valid document path.")
+    
+    try:
+        # Load configuration and initialize models
+        config = load_config("config.json")
+        initialize_keys()
+        llm_choice = initialize_llm(config)
+        embedding_model = initialize_embedding_model(config)
 
-# Display dropdown to select document
-document_paths = [
-    "./TSLA-10Q-Sep2024.pdf",
-    "./PANW-10Q-Oct2024.pdf"
-]
+        st.write(f"LLM: {llm_choice.model}")
+        st.write(f"Embedding Model: {embedding_model.model_name}")
 
-document_choice = st.selectbox("Select Document", document_paths)
-query_engines = {}
+        document_name = os.path.splitext(os.path.basename(document_choice))[0]
+        
+        _, document_nodes = parse_and_index_single_document(document_choice, llm_choice, embedding_model, verbosity=verbose)
 
-# If a document is selected, process it and display results
-if document_choice:
-    document_name = os.path.splitext(os.path.basename(document_choice))[0]
-    st.write(f"Processing document: {document_choice}")
+        query_engine = create_query_engine(document_nodes, embedding_model, retreival_depth=retrieval_depth, verbosity=verbose)
+        st.write(f"Query engine created for the document: **{document_name}**")
+        
+        if query:
+            now = time.time()
+            response = query_engine.query(query)
+            elapsed_time = round(time.time() - now, 2)
+            
+            st.subheader("Query Response")
+            st.write(response.response)
 
-    # Process the selected document
-    _, document_nodes = parse_and_index_single_document(document_choice, llm_choice, embedding_model, verbosity=True)
-
-    # Create a query engine for the document
-    query_engine = create_query_engine(document_nodes, embedding_model)
-
-    # Store the query engine in the dictionary with the document name as the key
-    query_engines[document_name] = query_engine
-
-    st.write(f"Query engine for '{document_name}' created!")
-    # Create a text input field for the user to enter a custom query
-    query = st.text_input("Enter your query:")
-
-    if query:
-        now = time.time()
-
-        # Execute the query and get the response
-        response = query_engines[document_name].query(query)
-
-        # Display the response and elapsed time
-        st.write(f"Query: {query}:\n\n\n{response}")
-        st.write(f"Elapsed: {round(time.time() - now, 2)}s")
-    else:
-        st.write("Please enter a query to proceed.")
+            st.subheader("Retrieval Context")
+            retrieval_context = [response.source_nodes[i].get_content() for i in range(retrieval_depth)]
+            for i, context in enumerate(retrieval_context, 1):
+                st.write(f"Context {i}:")
+                st.write(context)
+            
+            if verbose:
+                st.write(f"Elapsed Time: {elapsed_time}s")
+        else:
+            st.warning("Please enter a query to proceed.")
+    
+    except Exception as e:
+        st.error(f"An error occurred: {str(e)}")
 
     #query = "How did the Research and development expenses change in the quarter ending in October 2024 compared to the quarter ending in October 2023?"  
 
