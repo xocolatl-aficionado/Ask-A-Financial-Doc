@@ -62,8 +62,7 @@ def load_cache(file_name):
 def initialize_llm(config):
     """Initialize the LLM based on the provided configuration."""
     llm_config = config.get("llm", {})
-    llm_type = llm_config.get("type", "").lower()
-    
+    llm_type = llm_config.get("type").lower()
     if llm_type == "openai":
         model = llm_config.get("model", "")
         return OpenAI(model=model)
@@ -165,6 +164,16 @@ def create_query_engine(combined_nodes, embedding_model, retreival_depth =5, rer
         verbose=verbosity,
     )
 
+llm_options = {
+    "Gemini gemini-1.5-pro-002": {"llm": {"type": "gemini", "model": "models/gemini-1.5-pro-002"}},
+    "OpenAI gpt-4o-mini": {"llm": {"type": "openai", "model": "gpt-4o-mini"}}
+}
+
+embedding_options = {
+    "Gemini text-embedding-004": {"embedding_model": {"type": "gemini", "model_name": "models/text-embedding-004"}},
+    "OpenAI text-embedding-ada-002": {"embedding_model": {"type": "openai", "model_name": "text-embedding-ada-002"}}
+}
+
 st.title("Ask a Financial Doc")
 
 # Directory containing PDFs
@@ -194,22 +203,36 @@ else:
     st.warning("Please select a document to proceed.")
     st.stop()
 
+st.subheader("Model Selection")
+
+# Add LLM and Embedding Model selection
+selected_llm_name = st.selectbox("Choose an LLM", list(llm_options.keys()))
+selected_llm = llm_options[selected_llm_name]["llm"]
+selected_embedding_name = st.selectbox("Choose an Embedding Model", list(embedding_options.keys()))
+selected_embedding = embedding_options[selected_embedding_name]["embedding_model"]
+
+merged_config = {
+    "llm": selected_llm,
+    "embedding_model": selected_embedding
+}
 # Input fields
 query = st.text_area("Query", help="Enter your query here.")
 retrieval_depth = st.number_input("Retrieval Depth", min_value=1, max_value=100, value=3, help="Set the depth for document retrieval.")
 verbose = st.checkbox("Verbose Mode", value=True, help="Enable verbose mode for detailed output.")
+show_chunks = st.checkbox("Show Retrieval Chunks", value=False, help="Enable to view detailed retrieval chunks.")
 
 if st.button("Run Query"):
     try:
-        # Load configuration and initialize models
-        config = load_config("config.json")
+
+        # Initialize models
         initialize_keys()
-        llm_choice = initialize_llm(config)
-        embedding_model = initialize_embedding_model(config)
+        llm_choice = initialize_llm(merged_config)
+        embedding_model = initialize_embedding_model(merged_config)
 
-        st.write(f"LLM: {llm_choice.model}")
-        st.write(f"Embedding Model: {embedding_model.model_name}")
+        st.write(f"Selected LLM: {llm_choice.model}")
+        st.write(f"Selected Embedding Model: {embedding_model.model_name}")
 
+        # Process the document and query
         document_name = os.path.splitext(os.path.basename(st.session_state.selected_file))[0]
 
         _, document_nodes = parse_and_index_single_document(st.session_state.selected_file, llm_choice, embedding_model, verbosity=verbose)
@@ -222,14 +245,14 @@ if st.button("Run Query"):
             response = query_engine.query(query)
             elapsed_time = round(time.time() - now, 2)
 
-            st.subheader("Query Response")
+            st.subheader("_Query Response_")
             st.write(response.response)
-
-            st.subheader("Retrieval Context")
-            retrieval_context = [response.source_nodes[i].get_content() for i in range(retrieval_depth)]
-            for i, context in enumerate(retrieval_context, 1):
-                st.write(f"Context {i}:")
-                st.write(context)
+            if show_chunks:
+                st.subheader("Retrieval Context")
+                retrieval_context = [response.source_nodes[i].get_content() for i in range(retrieval_depth)]
+                for i, context in enumerate(retrieval_context, 1):
+                    st.write(f"Context {i}:")
+                    st.write(context)
 
             if verbose:
                 st.write(f"Elapsed Time: {elapsed_time}s")
