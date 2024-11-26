@@ -165,18 +165,41 @@ def create_query_engine(combined_nodes, embedding_model, retreival_depth =5, rer
         verbose=verbosity,
     )
 
-st.title("Query Pipeline Interface")
-    
-# Inputs
-document_choice = st.text_input("Document Path", help="Enter the path to the document.")
+st.title("Ask a Financial Doc")
+
+# Directory containing PDFs
+pdf_directory = "./"
+pdf_files = [file for file in os.listdir(pdf_directory) if file.endswith(".pdf")]
+
+if not pdf_files:
+    st.error("No PDF files found in the directory.")
+    st.stop()
+
+st.subheader("Select a Document")
+
+# Initialize session state for selected file
+if "selected_file" not in st.session_state:
+    st.session_state.selected_file = None
+
+# Display PDF files as tiles
+cols = st.columns(3)  # Adjust the number of columns as needed
+for i, pdf_file in enumerate(pdf_files):
+    col = cols[i % 3]
+    if col.button(pdf_file):
+        st.session_state.selected_file = os.path.join(pdf_directory, pdf_file)
+
+if st.session_state.selected_file:
+    st.success(f"Selected File: {os.path.basename(st.session_state.selected_file)}")
+else:
+    st.warning("Please select a document to proceed.")
+    st.stop()
+
+# Input fields
 query = st.text_area("Query", help="Enter your query here.")
 retrieval_depth = st.number_input("Retrieval Depth", min_value=1, max_value=100, value=3, help="Set the depth for document retrieval.")
 verbose = st.checkbox("Verbose Mode", value=True, help="Enable verbose mode for detailed output.")
 
 if st.button("Run Query"):
-    if not document_choice:
-        sys.exit("Please provide a valid document path.")
-    
     try:
         # Load configuration and initialize models
         config = load_config("config.json")
@@ -187,18 +210,18 @@ if st.button("Run Query"):
         st.write(f"LLM: {llm_choice.model}")
         st.write(f"Embedding Model: {embedding_model.model_name}")
 
-        document_name = os.path.splitext(os.path.basename(document_choice))[0]
-        
-        _, document_nodes = parse_and_index_single_document(document_choice, llm_choice, embedding_model, verbosity=verbose)
+        document_name = os.path.splitext(os.path.basename(st.session_state.selected_file))[0]
+
+        _, document_nodes = parse_and_index_single_document(st.session_state.selected_file, llm_choice, embedding_model, verbosity=verbose)
 
         query_engine = create_query_engine(document_nodes, embedding_model, retreival_depth=retrieval_depth, verbosity=verbose)
         st.write(f"Query engine created for the document: **{document_name}**")
-        
+
         if query:
             now = time.time()
             response = query_engine.query(query)
             elapsed_time = round(time.time() - now, 2)
-            
+
             st.subheader("Query Response")
             st.write(response.response)
 
@@ -207,15 +230,11 @@ if st.button("Run Query"):
             for i, context in enumerate(retrieval_context, 1):
                 st.write(f"Context {i}:")
                 st.write(context)
-            
+
             if verbose:
                 st.write(f"Elapsed Time: {elapsed_time}s")
         else:
             st.warning("Please enter a query to proceed.")
-    
+
     except Exception as e:
         st.error(f"An error occurred: {str(e)}")
-
-    #query = "How did the Research and development expenses change in the quarter ending in October 2024 compared to the quarter ending in October 2023?"  
-
-
