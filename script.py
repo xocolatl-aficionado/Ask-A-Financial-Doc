@@ -1,12 +1,11 @@
 import os
 import sys
 from llama_index.core import VectorStoreIndex
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+# from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.openai import OpenAI
 from llama_parse import LlamaParse
 from llama_index.core.node_parser import MarkdownElementNodeParser
-from llama_index.postprocessor.flag_embedding_reranker import FlagEmbeddingReranker
 from llama_index.core.schema import TextNode
 from copy import deepcopy
 from dotenv import load_dotenv
@@ -87,9 +86,9 @@ def initialize_embedding_model(config):
     if llm_provider == "openai":
         model = embedding_config.get("model", "text-embedding-ada-002")
         return OpenAIEmbedding(model=model)
-    elif llm_provider == "huggingface":
-        model = embedding_config.get("model", "BAAI/bge-small-en-v1.5")
-        return HuggingFaceEmbedding(model_name=model)
+    # elif llm_provider == "huggingface":
+    #     model = embedding_config.get("model", "BAAI/bge-small-en-v1.5")
+    #     return HuggingFaceEmbedding(model_name=model)
     elif llm_provider == "gemini":
         model = embedding_config.get("model", "models/text-embedding-004")
         return GeminiEmbedding(model_name=model)

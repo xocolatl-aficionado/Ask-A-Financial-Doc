@@ -1,10 +1,10 @@
 {
   "llm": {
-      "type": "gemini",                   
-      "model": "models/gemini-1.5-pro-002" 
+    "type": "gemini",
+    "model": "models/gemini-1.5-pro-002"
   },
   "embedding_model": {
-    "type": "gemini",                    
-    "model_name": "models/text-embedding-004" 
+    "type": "gemini",
+    "model_name": "models/text-embedding-004"
   }
 }
