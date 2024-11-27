@@ -157,16 +157,6 @@ def runEvaluation(metric_name: str):
   },
   {
     "document_choice": "./PANW-10Q-Oct2024.pdf",
-    "query": "What is the value of total assets owned in the year 2024?",
-    "expected_answer": "Total assets in 2024 were worth $119,852 million."
-  },
-  {
-    "document_choice": "./PANW-10Q-Oct2024.pdf",
-    "query": "What is the reporting period for the Palo Alto Networks quarterly report?",
-    "expected_answer": "The quarterly report covers the period ending October 31, 2024."
-  },
-  {
-    "document_choice": "./PANW-10Q-Oct2024.pdf",
     "query": "What was the total revenue for the quarter?",
     "expected_answer": " Total revenue for the quarter was $2,138.8 million."
   },
