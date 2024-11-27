@@ -165,7 +165,7 @@ def create_query_engine(combined_nodes, embedding_model, retreival_depth =5, rer
     )
 
 # --- Main Script ---
-def main(document_choice, query, retreival_depth, verbose):
+def load(document_choice, retreival_depth, verbose):
     """
     Main function for running the query pipeline.
     
@@ -197,20 +197,37 @@ def main(document_choice, query, retreival_depth, verbose):
     query_engine = create_query_engine(document_nodes, embedding_model, retreival_depth=retreival_depth, verbosity=verbose)
     query_engines[document_name] = query_engine
     print(f"Query engine made for {document_name} document")
+    return query_engines
 
-    if query:
-        now = time.time()
-        response = query_engines[document_name].query(query)
-        if verbose:
-            print(f"Query: {query}:\n\n\n{response}")
-            print(f"Elapsed: {round(time.time() - now, 2)}s")
-    else:
-        print("Please enter a query to proceed.")
+def run_query(query, query_engine, document_name, retrieval_depth, verbose=False):
+    """
+    Execute a query using the provided query engine and return the result.
 
-    retrieval_context = [response.source_nodes[i].get_content() for i in range(retreival_depth)]
-    answer = response.response
-    return (answer, retrieval_context)
+    Parameters:
+        query (str): The query to execute.
+        query_engine (object): The query engine to process the query.
+        document_name(str): The name of the document.
+        retrieval_depth (int): The number of retrieval chunks to include in the context.
+        verbose (bool): Whether to print verbose output.
 
+    Returns:
+        tuple: A tuple containing the response answer (str) and retrieval context (list).
+    """
+    if not query:
+        raise ValueError("Please enter a query to proceed.")
+
+    start_time = time.time()
+    response = query_engine[document_name].query(query)
+    
+    if verbose:
+        elapsed_time = round(time.time() - start_time, 2)
+        print(f"Query: {query}\n\nResponse: {response.response}")
+        print(f"Elapsed Time: {elapsed_time}s")
+
+    retrieval_context = [
+        response.source_nodes[i].get_content() for i in range(retrieval_depth)
+    ]
+    return (response.response, retrieval_context)
 
 if __name__ == "__main__":
     #
@@ -235,7 +252,7 @@ if __name__ == "__main__":
         help="Query string to ask the document (default: 'What is the net income in 2024?').",
     )
     parser.add_argument(
-        "--retreival_depth",
+        "--retrieval_depth",
         type=int,
         default=5,
         help="Number of retrieval steps (default: 5).",
@@ -248,12 +265,15 @@ if __name__ == "__main__":
 
     # Parse arguments
     args = parser.parse_args()
+    document_choice=args.document_choice
+    query=args.query
+    retrieval_depth=args.retrieval_depth
+    verbose=args.verbose
 
-    # Call the main function with parsed arguments
-    main(
-        document_choice=args.document_choice,
-        query=args.query,
-        retreival_depth=args.retreival_depth,
-        verbose=args.verbose,
+    query_engine = load(document_choice, retrieval_depth, verbose)
+    document_name = os.path.splitext(os.path.basename(document_choice))[0]
+
+    run_query(
+         query=query, query_engine=query_engine, document_name=document_name, retrieval_depth=retrieval_depth, verbose=verbose
     )
     
