@@ -85,13 +85,13 @@ def initialize_embedding_model(config):
     llm_provider = embedding_config.get("type", "").lower()
 
     if llm_provider == "openai":
-        model = embedding_config.get("model", "text-embedding-ada-002")
+        model = embedding_config.get("model_name", "text-embedding-ada-002")
         return OpenAIEmbedding(model=model)
     elif llm_provider == "huggingface":
-        model = embedding_config.get("model", "BAAI/bge-small-en-v1.5")
+        model = embedding_config.get("model_name", "BAAI/bge-small-en-v1.5")
         return HuggingFaceEmbedding(model_name=model)
     elif llm_provider == "gemini":
-        model = embedding_config.get("model", "models/text-embedding-004")
+        model = embedding_config.get("model_name", "models/text-embedding-004")
         return GeminiEmbedding(model_name=model)
     else:
         raise ValueError(f"Unsupported embedding model type: {llm_provider}")
