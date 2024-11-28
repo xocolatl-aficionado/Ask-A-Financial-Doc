@@ -62,7 +62,8 @@ def load_cache(file_name):
 def initialize_llm(config):
     """Initialize the LLM based on the provided configuration."""
     llm_config = config.get("llm", {})
-    llm_type = llm_config.get("type").lower()
+    llm_type = llm_config.get("type", "").lower()
+    
     if llm_type == "openai":
         model = llm_config.get("model", "")
         return OpenAI(model=model)
@@ -85,13 +86,13 @@ def initialize_embedding_model(config):
     llm_provider = embedding_config.get("type", "").lower()
 
     if llm_provider == "openai":
-        model = embedding_config.get("model", "text-embedding-ada-002")
+        model = embedding_config.get("model_name", "text-embedding-ada-002")
         return OpenAIEmbedding(model=model)
     elif llm_provider == "huggingface":
-        model = embedding_config.get("model", "BAAI/bge-small-en-v1.5")
+        model = embedding_config.get("model_name", "BAAI/bge-small-en-v1.5")
         return HuggingFaceEmbedding(model_name=model)
     elif llm_provider == "gemini":
-        model = embedding_config.get("model", "models/text-embedding-004")
+        model = embedding_config.get("model_name", "models/text-embedding-004")
         return GeminiEmbedding(model_name=model)
     else:
         raise ValueError(f"Unsupported embedding model type: {llm_provider}")
@@ -171,7 +172,9 @@ llm_options = {
 
 embedding_options = {
     "Gemini text-embedding-004": {"embedding_model": {"type": "gemini", "model_name": "models/text-embedding-004"}},
-    "OpenAI text-embedding-ada-002": {"embedding_model": {"type": "openai", "model_name": "text-embedding-ada-002"}}
+    "OpenAI text-embedding-ada-002": {"embedding_model": {"type": "openai", "model_name": "text-embedding-ada-002"}},
+    "OpenAI text-embedding-3-small": {"embedding_model": {"type": "openai", "model_name": "text-embedding-3-small"}},
+    "OpenAI text-embedding-3-large": {"embedding_model": {"type": "openai", "model_name": "text-embedding-3-large"}}
 }
 
 st.title("Ask a Financial Doc")
