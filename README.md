@@ -2,7 +2,6 @@
 
 [FinancialRAG_COMP6907.pdf](https://github.com/user-attachments/files/17967611/FinancialRAG_COMP6907.pdf)
 
-
 ### Setup
 
 - Clone the repo. 
@@ -96,3 +95,9 @@ With RAG:
 We've successfully sourced from the original document: 
 
 <img width="609" alt="Screenshot 2024-11-20 at 3 41 24 PM" src="https://github.com/user-attachments/assets/724e93ea-2b98-46fd-8b07-9d6865fd3426">
+
+### Credits
+
+- Adithya Sudhan - Chunking, Embeddings, Retreival, UI
+- Faizan Saleem - Evaluation using benchmark (also contributed PANW test questions)
+- Mustafa Kashif - Contributed TSLA test questions
