@@ -2,6 +2,14 @@
 
 [FinancialRAG_COMP6907.pdf](https://github.com/user-attachments/files/17967611/FinancialRAG_COMP6907.pdf)
 
+### Ingredients
+
+- gpt-4o-mini, gemini-1.5-pro, open ai and gemini embeddings
+- llamaparse to chunk pdfs
+- in memory vector db store ( using llamaIndex's VectorStoreIndex)
+- llamaindex query engine ( VectorIndexRetriever)
+- DeepEval (benchmarking)
+  
 ### Setup
 
 - Clone the repo. 
