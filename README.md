@@ -1,3 +1,8 @@
+### Results
+
+[FinancialRAG_COMP6907.pdf](https://github.com/user-attachments/files/17967611/FinancialRAG_COMP6907.pdf)
+
+
 ### Setup
 
 - Clone the repo. 
